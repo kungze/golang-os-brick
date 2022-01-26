@@ -155,8 +155,10 @@ func (c *ConnRbd) localAttachVolume() (map[string]string, error) {
 	poolVolume := volume[1]
 	rbdDevPath := c.GetDevicePath()
 	_, err = os.Readlink(rbdDevPath)
+	monHost := c.generateMonitorHost()
 	if err != nil {
-		cmd := []string{"map", poolVolume, "--pool", poolName, "--id", c.AuthUserName}
+		cmd := []string{"map", poolVolume, "--pool", poolName, "--id", c.AuthUserName,
+				"--mon_host", monHost}
 		result, err := utils.Execute("rbd", cmd...)
 		logger.Info("command succeeded: rbd map path is %s", result)
 		if err != nil {
@@ -179,4 +181,15 @@ func (c *ConnRbd) GetDevicePath() string {
 	poolName := volume[0]
 	poolVolume := volume[1]
 	return fmt.Sprintf("/dev/rbd/%s/%s", poolName, poolVolume)
+}
+
+// generateMonitorHost generate monitor host
+func (c *ConnRbd) generateMonitorHost() string {
+	var monHosts []string
+	for i := range c.Hosts {
+		host := fmt.Sprintf("%s:%s", c.Hosts[i], c.Ports[i])
+		monHosts = append(monHosts, host)
+	}
+	monHost := strings.Join(monHosts, ",")
+	return monHost
 }
