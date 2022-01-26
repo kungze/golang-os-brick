@@ -10,7 +10,7 @@ type ConnProperties interface {
 	ConnectVolume() (map[string]string, error)
 	DisConnectVolume()
 	ExtendVolume() (int64, error)
-        GetDevicePath() string
+    GetDevicePath() string
 }
 
 // NewConnector Build a Connector object based upon protocol and architecture
