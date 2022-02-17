@@ -1,14 +1,15 @@
 package connectors
 
 import (
-	"github.com/kungze/golang-os-brick/connectors/rbd"
 	"strings"
+
+	"github.com/kungze/golang-os-brick/rbd"
 )
 
 // ConnProperties is base class interface
 type ConnProperties interface {
 	ConnectVolume() (map[string]string, error)
-	DisConnectVolume()
+	DisConnectVolume() error
 	ExtendVolume() (int64, error)
 	GetDevicePath() string
 }
