@@ -158,7 +158,7 @@ func (c *ConnRbd) localAttachVolume() (map[string]string, error) {
 	monHost := c.generateMonitorHost()
 	if err != nil {
 		cmd := []string{"map", poolVolume, "--pool", poolName, "--id", c.AuthUserName,
-				"--mon_host", monHost}
+			"--mon_host", monHost}
 		result, err := utils.Execute("rbd", cmd...)
 		logger.Info("command succeeded: rbd map path is %s", result)
 		if err != nil {
