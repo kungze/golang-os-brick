@@ -19,7 +19,10 @@ jobs:
       - name: Format (If the job does not pass, please execute `gofmt -w  .` in your code directory.)
         run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
 
-      - name: golangci-lint
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
+
+      - name: Run unitest
+        run: GO111MODULE=on go test -run . ./...

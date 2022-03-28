@@ -2,15 +2,19 @@ package rbd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/kungze/golang-os-brick/utils"
-	"github.com/wonderivan/logger"
 	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/kungze/golang-os-brick/utils"
+	"github.com/wonderivan/logger"
 )
+
+var utilsExecute = utils.Execute
 
 // ConnRbd contains rbd volume info
 type ConnRbd struct {
@@ -51,7 +55,6 @@ func NewRBDConnector(connInfo map[string]interface{}) *ConnRbd {
 // ConnectVolume Connect to a volume
 func (c *ConnRbd) ConnectVolume() (map[string]string, error) {
 	var err error
-	// Only supported local attach volume
 	if c.DoLocalAttach {
 		result, err := c.localAttachVolume()
 		if err != nil {
@@ -65,39 +68,38 @@ func (c *ConnRbd) ConnectVolume() (map[string]string, error) {
 }
 
 // DisConnectVolume Disconnect a volume
-func (c *ConnRbd) DisConnectVolume() {
-	// Only supported local attach volume
+func (c *ConnRbd) DisConnectVolume() error {
 	if c.DoLocalAttach {
 		rootDevice := c.findRootDevice()
 		if rootDevice != "" {
 			cmd := []string{"unmap", rootDevice}
-			res, err := utils.Execute("rbd", cmd...)
+			res, err := utilsExecute("rbd", cmd...)
 			if err != nil {
 				logger.Error("Exec rbd unmap failed", err)
+				return err
 			}
 			logger.Debug("Exec rbd unmap command success", res)
 		}
 	}
+	return nil
 }
 
 // ExtendVolume Refresh local volume view and return current size in bytes
 // Nothing to do, RBD attached volumes are automatically refreshed, but
 // we need to return the new size for compatibility
 func (c *ConnRbd) ExtendVolume() (int64, error) {
-	var err error
-	// Only supported local attach volume
 	if c.DoLocalAttach {
 		device := c.findRootDevice()
 		if device == "" {
-			logger.Error("device is not exist", err)
-			return 0, err
+			logger.Error("device is not exist.")
+			return -1, errors.New("device is not exist")
 		}
 		deviceName := path.Base(device)
 		deviceNumber := deviceName[3:]
 		size, err := ioutil.ReadFile("/sys/devices/rbd/" + deviceNumber + "/size")
 		if err != nil {
 			logger.Error("Read /sys/devices/rbd/?/size failed", err)
-			return 0, err
+			return -1, err
 		}
 		strSize := string(size)
 		vSize := strings.Replace(strSize, "'", "", -1)
@@ -105,7 +107,7 @@ func (c *ConnRbd) ExtendVolume() (int64, error) {
 		logger.Info("extend volume to %s is success", iSize)
 		return iSize, nil
 	}
-	return 0, err
+	return -1, nil
 }
 
 // findRootDevice Find the underlying /dev/rbd* device for a mapping
@@ -117,7 +119,7 @@ func (c *ConnRbd) findRootDevice() string {
 	cmd := []string{"showmapped", "--format=json"}
 	cmd = append(cmd, "--id")
 	cmd = append(cmd, c.AuthUserName)
-	res, err := utils.Execute("rbd", cmd...)
+	res, err := utilsExecute("rbd", cmd...)
 	logger.Debug("Exec rbd showmapped command success", res)
 	if err != nil {
 		logger.Error("Exec rbd showmapped failed", err)
@@ -140,13 +142,9 @@ func (c *ConnRbd) findRootDevice() string {
 // localAttachVolume Exec local attach volume process
 func (c *ConnRbd) localAttachVolume() (map[string]string, error) {
 	res := map[string]string{}
-	out, err := utils.Execute("which", "rbd")
+	_, err := utilsExecute("which", "rbd")
 	if err != nil {
 		logger.Error("Exec which rbd command failed", err)
-		return nil, err
-	}
-	if out == "" {
-		logger.Error("ceph-common package is not installed")
 		return nil, err
 	}
 
@@ -159,12 +157,12 @@ func (c *ConnRbd) localAttachVolume() (map[string]string, error) {
 	if err != nil {
 		cmd := []string{"map", poolVolume, "--pool", poolName, "--id", c.AuthUserName,
 			"--mon_host", monHost}
-		result, err := utils.Execute("rbd", cmd...)
-		logger.Info("command succeeded: rbd map path is %s", result)
+		result, err := utilsExecute("rbd", cmd...)
 		if err != nil {
 			logger.Error("rbd map command exec failed", err)
 			return nil, err
 		}
+		logger.Info("command succeeded: rbd map path is %s", result)
 	} else {
 		logger.Info("Volume %s is already mapped to local device %s", poolVolume, rbdDevPath)
 		return nil, err
