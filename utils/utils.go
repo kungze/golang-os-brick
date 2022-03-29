@@ -13,6 +13,44 @@ func Execute(command string, arg ...string) (string, error) {
 	return string(stdoutStderr), err
 }
 
+func EchoScsiCommand(path, content string) error {
+	// write content to path (sysfs)
+	logger.Info("write scsi file [path: %s content: %s]", path, content)
+
+	f, err := os.OpenFile(path, os.O_WRONLY, 0400)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(content); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
+}
+
+func ExecIscsiadm(portalIP string, iqn string, args []string) (string, error) {
+	var cmd []string
+	baseArgs := []string{"-m", "node"}
+	cmd = append(baseArgs, []string{"-T", iqn}...)
+	cmd = append(cmd, []string{"-p", portalIP}...)
+	cmd = append(cmd, args...)
+
+	out, err := Execute("iscsiadm", cmd...)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute iscsiadm command: %w", err)
+	}
+
+	return out, nil
+}
+
+func UpdateIscsiadm(portalIP, targetIQN, key, value string, args []string) (string, error) {
+	a := []string{"--op", "update", "-n", key, "-v", value}
+	a = append(a, args...)
+	return ExecIscsiadm(portalIP, targetIQN, a)
+}
+
 func ToBool(i interface{}) bool {
 	switch res := i.(type) {
 	case bool:
@@ -28,6 +66,15 @@ func ToBool(i interface{}) bool {
 	default:
 		panic(fmt.Sprintf("Can not convert %T to bool.", res))
 	}
+}
+
+func ToInt(i interface{}) int {
+	var res int
+	switch e := i.(type) {
+	case int:
+		res = e
+	}
+	return res
 }
 
 func ToString(i interface{}) string {
