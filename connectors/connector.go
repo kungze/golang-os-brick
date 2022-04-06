@@ -3,6 +3,8 @@ package connectors
 import (
 	"strings"
 
+	"github.com/kungze/golang-os-brick/iscsi"
+	"github.com/kungze/golang-os-brick/local"
 	"github.com/kungze/golang-os-brick/rbd"
 )
 
@@ -21,6 +23,10 @@ func NewConnector(protocol string, connInfo map[string]interface{}) ConnProperti
 		// Only supported local attach volume
 		connInfo["do_local_attach"] = true
 		return rbd.NewRBDConnector(connInfo)
+	case "LOCAL":
+		return local.NewLocalConnector(connInfo)
+	case "ISCSI":
+		return iscsi.NewISCSIConnector(connInfo)
 	}
 	return nil
 }
